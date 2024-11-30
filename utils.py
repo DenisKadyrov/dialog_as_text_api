@@ -1,8 +1,10 @@
+import json
+import wave
+import os
+
 from fastapi import UploadFile
 from pydub import AudioSegment
 from vosk import Model, KaldiRecognizer
-import json
-import wave
 
 
 model = Model(lang="en-us")
@@ -28,7 +30,9 @@ async def get_dialog_as_text(file: UploadFile) -> list[dict]:
         if rec.AcceptWaveform(data):
             result = json.loads(rec.Result())
             if "text" in result and result["text"]:
-                duration = len(result["text"]) 
+                duration = 0
+                for res in result["result"]:
+                    duration += res['end'] - res['start'] 
                 dialog.append({
                     "source": current_speaker,
                     "text": result["text"],

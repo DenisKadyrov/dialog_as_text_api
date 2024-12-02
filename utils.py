@@ -5,7 +5,6 @@ import librosa
 
 import numpy as np
 
-from struct import pack
 from fastapi import UploadFile
 from pydub import AudioSegment
 from vosk import Model, KaldiRecognizer
@@ -93,10 +92,41 @@ def get_gender(file: str, start: float, duration: float) -> str:
     gender = "male" if male_prob > female_prob else "female"
     return gender
 
+
+def detect_raised_voice(audio_path, start, duration, threshold_db=-20):
+    """
+    Detects whether the voice in the audio file is raised.
+
+    Parameters:
+        audio_path (str): Path to the audio file.
+        threshold_db (float): Threshold in decibels to classify raised voice.
+                              The higher the value, the more sensitive the detection.
+                              Default is -20 dB.
+
+    Returns:
+        bool: True if the voice is raised, False otherwise.
+    """
+    # Load the audio file
+    y, sr = librosa.load(audio_path, sr=None, offset=start, duration=duration)
+    
+    # Calculate the Root Mean Square (RMS) energy
+    rms = librosa.feature.rms(y=y)[0]
+    
+    # Convert RMS to decibels (dB)
+    rms_db = librosa.amplitude_to_db(rms, ref=np.max)
+    
+    # Calculate the average loudness in dB
+    avg_loudness_db = np.mean(rms_db)
+    
+    # Check if the average loudness exceeds the threshold
+    is_raised = bool(avg_loudness_db > threshold_db)
+    
+    return is_raised
+
 # I want use this model, but my laptop can't load this model. Sorry..
 # model = Model(model_path="./vosk-model-ru-0.42")
 model = Model(lang="ru")
-async def get_dialog_as_text(file: UploadFile) -> list[dict]:
+def get_dialog_as_text(file: UploadFile) -> list[dict]:
     # Model for get text from audio
     #Convert mp3 в wav
     audio = AudioSegment.from_file(file.file, format="mp3")
@@ -112,7 +142,7 @@ async def get_dialog_as_text(file: UploadFile) -> list[dict]:
     current_speaker = "receiver"
 
     while True:
-        data = wf.readframes(100)
+        data = wf.readframes(10000)
         if len(data) == 0:
             break
         if rec.AcceptWaveform(data):
@@ -121,12 +151,14 @@ async def get_dialog_as_text(file: UploadFile) -> list[dict]:
                 duration = 0
                 for res in result["result"]:
                     duration += res['end'] - res['start'] 
-                gender = get_gender(temp_wav, res['start'], duration)
+                gender = get_gender(temp_wav, result["result"][0]['start'], duration)
+                raised_voice = detect_raised_voice(temp_wav, result["result"][0]['start'], duration)
                 dialog.append({
                     "source": current_speaker,
                     "text": result["text"],
                     "duration": duration,
                     "gender": gender,
+                    "raised_voise": raised_voice,
                 })
                 total_duration[current_speaker] += duration
 

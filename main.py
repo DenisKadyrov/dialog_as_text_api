@@ -8,7 +8,7 @@ app = FastAPI()
 
 @app.post("/asr")
 async def asr(file: UploadFile = File(...)) -> dict:
-    res = await get_dialog_as_text(file)
+    res = get_dialog_as_text(file)
     return res
 
 if __name__ == "__main__":

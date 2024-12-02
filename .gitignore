@@ -164,3 +164,13 @@ cython_debug/
 # My audio files
 Audio1.mp3
 Power_English_Update.wav
+test.wav
+Audio2.mp3
+audio3.mp3
+
+# My test file
+test.py
+text_analiz.ipynb
+
+# model
+vosk-model-ru-0.42/*
